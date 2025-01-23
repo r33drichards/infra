@@ -46,7 +46,7 @@ type Handler struct {
 	outWg *sync.WaitGroup
 	stdin io.WriteCloser
 
-	DataEvent *MultiplexedChannel[rpc.ProcessEvent_Data]
+	DataEvent *CachedMultiplex[rpc.ProcessEvent_Data]
 	EndEvent  *MultiplexedChannel[rpc.ProcessEvent_End]
 }
 
@@ -102,7 +102,7 @@ func New(user *user.User, req *rpc.StartRequest, logger *zerolog.Logger, envVars
 
 	cmd.Env = formattedVars
 
-	outMultiplex := NewMultiplexedChannel[rpc.ProcessEvent_Data](outputBufferSize)
+	outMultiplex := NewMultiplexedChannel[rpc.ProcessEvent_Data](outputBufferSize).WithCache()
 	var outWg sync.WaitGroup
 
 	if req.GetPty() != nil {
@@ -127,7 +127,7 @@ func New(user *user.User, req *rpc.StartRequest, logger *zerolog.Logger, envVars
 				n, readErr := tty.Read(buf)
 
 				if n > 0 {
-					outMultiplex.Source <- rpc.ProcessEvent_Data{
+					outMultiplex.Source() <- rpc.ProcessEvent_Data{
 						Data: &rpc.ProcessEvent_DataEvent{
 							Output: &rpc.ProcessEvent_DataEvent_Pty{
 								Pty: buf[:n],
@@ -187,7 +187,7 @@ func New(user *user.User, req *rpc.StartRequest, logger *zerolog.Logger, envVars
 			n, readErr := stdout.Read(buf)
 
 			if n > 0 {
-				outMultiplex.Source <- rpc.ProcessEvent_Data{
+				outMultiplex.Source() <- rpc.ProcessEvent_Data{
 					Data: &rpc.ProcessEvent_DataEvent{
 						Output: &rpc.ProcessEvent_DataEvent_Stdout{
 							Stdout: buf[:n],
@@ -232,7 +232,7 @@ func New(user *user.User, req *rpc.StartRequest, logger *zerolog.Logger, envVars
 			n, readErr := stderr.Read(buf)
 
 			if n > 0 {
-				outMultiplex.Source <- rpc.ProcessEvent_Data{
+				outMultiplex.Source() <- rpc.ProcessEvent_Data{
 					Data: &rpc.ProcessEvent_DataEvent{
 						Output: &rpc.ProcessEvent_DataEvent_Stderr{
 							Stderr: buf[:n],
@@ -336,7 +336,7 @@ func (p *Handler) Start() (uint32, error) {
 func (p *Handler) Wait() {
 	p.outWg.Wait()
 
-	close(p.DataEvent.Source)
+	close((p.DataEvent.Source()))
 
 	p.tty.Close()
 
@@ -360,7 +360,7 @@ func (p *Handler) Wait() {
 		End: endEvent,
 	}
 
-	p.EndEvent.Source <- event
+	p.EndEvent.Source() <- event
 
 	p.logger.
 		Info().

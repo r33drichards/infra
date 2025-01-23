@@ -6,7 +6,7 @@ import (
 )
 
 type MultiplexedChannel[T any] struct {
-	Source   chan T
+	source   chan T
 	channels []chan T
 	mu       sync.RWMutex
 	exited   atomic.Bool
@@ -15,11 +15,11 @@ type MultiplexedChannel[T any] struct {
 func NewMultiplexedChannel[T any](buffer int) *MultiplexedChannel[T] {
 	c := &MultiplexedChannel[T]{
 		channels: nil,
-		Source:   make(chan T, buffer),
+		source:   make(chan T, buffer),
 	}
 
 	go func() {
-		for v := range c.Source {
+		for v := range c.source {
 			c.mu.RLock()
 
 			for _, cons := range c.channels {
@@ -59,6 +59,10 @@ func (m *MultiplexedChannel[T]) Fork() (chan T, func()) {
 	}
 }
 
+func (m *MultiplexedChannel[T]) Source() chan T {
+	return m.source
+}
+
 func (m *MultiplexedChannel[T]) remove(consumer chan T) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -70,4 +74,8 @@ func (m *MultiplexedChannel[T]) remove(consumer chan T) {
 			return
 		}
 	}
+}
+
+func (m *MultiplexedChannel[T]) WithCache() *CachedMultiplex[T] {
+	return NewCachedMultiplex(m)
 }

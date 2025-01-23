@@ -3,6 +3,8 @@ package process
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/e2b-dev/infra/packages/envd/internal/logs"
 	"github.com/e2b-dev/infra/packages/envd/internal/permissions"
@@ -25,6 +27,16 @@ func (s *Service) handleConnect(ctx context.Context, req *connect.Request[rpc.Co
 	}
 
 	exitChan := make(chan struct{})
+
+	if req.Msg.EventsSince != nil {
+
+		timestamp, err := time.Parse(time.RFC3339Nano, *req.Msg.EventsSince)
+
+		if err != nil {
+			return err
+		}
+		proc.DataEvent = proc.DataEvent.PopulateEntriesAfter(timestamp)
+	}
 
 	data, dataCancel := proc.DataEvent.Fork()
 	defer dataCancel()

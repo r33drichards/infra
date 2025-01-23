@@ -75,7 +75,7 @@ func (s *Service) handleStart(ctx context.Context, req *connect.Request[rpc.Star
 	exitChan := make(chan struct{})
 
 	startMultiplexer := handler.NewMultiplexedChannel[rpc.ProcessEvent_Start](0)
-	defer close(startMultiplexer.Source)
+	defer close(startMultiplexer.Source())
 
 	start, startCancel := startMultiplexer.Fork()
 	defer startCancel()
