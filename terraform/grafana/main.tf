@@ -6,12 +6,9 @@ terraform {
     grafana = {
       source = "grafana/grafana"
     }
-    
+
   }
 }
-
-data "google_client_config" "default" {}
-
 
 variable "prefix" {
   type    = string
