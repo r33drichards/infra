@@ -1,8 +1,12 @@
 terraform {
+  backend "gcs" {
+    prefix = "terraform/grafana/state"
+  }
   required_providers {
     grafana = {
       source = "grafana/grafana"
     }
+    
   }
 }
 
@@ -64,7 +68,7 @@ resource "grafana_cloud_stack" "e2b_stack" {
 
 data "google_secret_manager_secret_version" "grafana_username" {
   secret  = "e2b-grafana-username"
-  project = var.project
+  project = "e2b-staging-wendt-robert"
 }
 
 resource "google_secret_manager_secret_version" "grafana_username" {
